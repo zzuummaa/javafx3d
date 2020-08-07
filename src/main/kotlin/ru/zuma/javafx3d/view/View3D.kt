@@ -22,9 +22,10 @@ class View3D: View() {
     private var isMouseStick = true
     private var isMovedByCode = true
 
-    private val rotateSpeed = 0.1
+    private val rotateSpeed = 0.2
     private val rotateX = Rotate(0.0, 0.0, 0.0, 0.0, Rotate.X_AXIS)
     private val rotateY = Rotate(0.0, 0.0, 0.0, 0.0, Rotate.Y_AXIS)
+    private val rotateZ = Rotate(0.0, 0.0, 0.0, 0.0, Rotate.Z_AXIS)
 
     private var mouseXOld = 0.0
     private var mouseYOld = 0.0
@@ -35,15 +36,11 @@ class View3D: View() {
         root.scene.camera = camera
         camera.farClip = 50000.0
         camera.translateZ = -1000.0
-        camera.transforms.addAll(rotateX, rotateY)
+        camera.transforms.addAll(rotateX, rotateY, rotateZ)
 
         currentStage!!.focusedProperty().addListener(ChangeListener { observable, oldValue, newValue ->
             if (!newValue) isMouseStick = false
 //            print("focused: $newValue")
-        })
-
-        currentStage!!.addEventHandler(MouseEvent.MOUSE_MOVED, { event ->
-
         })
 
         currentStage!!.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
@@ -55,10 +52,8 @@ class View3D: View() {
                 KeyCode.S           -> moveCamera(dz = -speed)
                 KeyCode.SPACE       -> moveCamera(dy = -speed)
                 KeyCode.CONTROL     -> moveCamera(dy = speed)
-                KeyCode.E           -> rotateX.angle += rotateSpeed * 4
-                KeyCode.Q           -> rotateX.angle -= rotateSpeed * 4
-                KeyCode.X           -> rotateY.angle += rotateSpeed * 4
-                KeyCode.Z           -> rotateY.angle -= rotateSpeed * 4
+                KeyCode.Q           -> rotateZ.angle -= rotateSpeed * 8
+                KeyCode.E           -> rotateZ.angle += rotateSpeed * 8
                 else -> {}
             }
 
@@ -89,8 +84,6 @@ class View3D: View() {
                 isMouseStick = true
                 isMovedByCode = true
                 moveMouseToCenter()
-                mouseXOld = event.x
-                mouseYOld = event.y
             }
         }
         onMouseMoved = EventHandler { event ->
@@ -98,18 +91,16 @@ class View3D: View() {
             if (isMovedByCode) {
                 isMovedByCode = false
 //                println("on moved by code")
-                mouseXOld = event.x
-                mouseYOld = event.y
                 return@EventHandler
             }
 
             if (isMouseStick) {
+//                println("on center mouse")
                 isMovedByCode = true
                 moveMouseToCenter()
-//                println("on center mouse")
 
-                val mouseXNew = event.x
-                val mouseYNew = event.y
+                val mouseXNew = event.screenX
+                val mouseYNew = event.screenY
 
                 rotateY.angle += (mouseXNew - mouseXOld) * rotateSpeed
                 rotateX.angle -= (mouseYNew - mouseYOld) * rotateSpeed
@@ -140,15 +131,15 @@ class View3D: View() {
     }
 
     fun moveMouseToCenter() {
-        Platform.runLater {
-            val x = (root.scene.window.x + root.scene.window.width / 2).toInt()
-            val y = (root.scene.window.y + root.scene.window.height / 2).toInt()
-            Robot().mouseMove(x, y)
-        }
+        val x = (root.scene.window.x + root.scene.window.width / 2).toInt()
+        val y = (root.scene.window.y + root.scene.window.height / 2).toInt()
+        Robot().mouseMove(x, y)
+        mouseXOld = x.toDouble()
+        mouseYOld = y.toDouble()
     }
 
     fun moveCamera(dx: Double = 0.0, dy: Double = 0.0, dz: Double = 0.0) {
-        val point = rotateY.transform(rotateX.transform(dx, dy, dz))
+        val point = rotateZ.transform(rotateY.transform(rotateX.transform(dx, dy, dz)))
         println("moveCamera: {$dx, $dy, $dz} -> {${point.x}, ${point.y}, ${point.z}}")
         camera.translateX += point.x
         camera.translateY += point.y
