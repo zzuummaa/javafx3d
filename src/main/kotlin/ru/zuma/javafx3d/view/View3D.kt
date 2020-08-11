@@ -1,16 +1,15 @@
 package ru.zuma.javafx3d.view
 
-import bio.singa.javafx.viewer.XForm
 import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.scene.PerspectiveCamera
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
-import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
 import javafx.scene.paint.PhongMaterial
 import javafx.scene.shape.Box
 import javafx.scene.transform.Rotate
+import ru.zuma.javafx3d.engine.RotatableTransform
 import ru.zuma.javafx3d.style.Style3D
 import tornadofx.*
 import java.awt.Robot
@@ -18,15 +17,11 @@ import java.util.*
 
 class View3D: View() {
     private val camera = PerspectiveCamera(true)
-    private val xForm = XForm()
+    private val cameraController = RotatableTransform(camera)
     private var isMouseStick = true
     private var isMovedByCode = true
 
     private val rotateSpeed = 0.2
-    private val rotateX = Rotate(0.0, 0.0, 0.0, 0.0, Rotate.X_AXIS)
-    private val rotateY = Rotate(0.0, 0.0, 0.0, 0.0, Rotate.Y_AXIS)
-    private val rotateZ = Rotate(0.0, 0.0, 0.0, 0.0, Rotate.Z_AXIS)
-
     private var mouseXOld = 0.0
     private var mouseYOld = 0.0
 
@@ -36,7 +31,6 @@ class View3D: View() {
         root.scene.camera = camera
         camera.farClip = 50000.0
         camera.translateZ = -1000.0
-        camera.transforms.addAll(rotateX, rotateY, rotateZ)
 
         currentStage!!.focusedProperty().addListener(ChangeListener { observable, oldValue, newValue ->
             if (!newValue) isMouseStick = false
@@ -46,14 +40,14 @@ class View3D: View() {
         currentStage!!.addEventHandler(KeyEvent.KEY_PRESSED) { event ->
             val speed = 10.0
             when (event.code) {
-                KeyCode.D           -> moveCamera(dx = speed)
-                KeyCode.A           -> moveCamera(dx = -speed)
-                KeyCode.W           -> moveCamera(dz = speed)
-                KeyCode.S           -> moveCamera(dz = -speed)
-                KeyCode.SPACE       -> moveCamera(dy = -speed)
-                KeyCode.CONTROL     -> moveCamera(dy = speed)
-                KeyCode.Q           -> rotateZ.angle -= rotateSpeed * 8
-                KeyCode.E           -> rotateZ.angle += rotateSpeed * 8
+                KeyCode.D           -> cameraController.move(dx = speed)
+                KeyCode.A           -> cameraController.move(dx = -speed)
+                KeyCode.W           -> cameraController.move(dz = speed)
+                KeyCode.S           -> cameraController.move(dz = -speed)
+                KeyCode.SPACE       -> cameraController.move(dy = -speed)
+                KeyCode.CONTROL     -> cameraController.move(dy = speed)
+                KeyCode.Q           -> cameraController.rotate(dz = -rotateSpeed * 8.0)
+                KeyCode.E           -> cameraController.rotate(dz =  rotateSpeed * 8.0)
                 else -> {}
             }
 
@@ -102,10 +96,8 @@ class View3D: View() {
                 val mouseXNew = event.screenX
                 val mouseYNew = event.screenY
 
-                rotateY.angle += (mouseXNew - mouseXOld) * rotateSpeed
-                rotateX.angle -= (mouseYNew - mouseYOld) * rotateSpeed
-                println("dx: ${mouseXNew - mouseXOld}, dy: ${mouseYNew - mouseYOld}")
-//                println("x: $mouseXNew, y: $mouseYNew")
+                cameraController.rotate(dy =  (mouseXNew - mouseXOld) * rotateSpeed,
+                                        dx = -(mouseYNew - mouseYOld) * rotateSpeed)
 
                 mouseXOld = mouseXNew
                 mouseYOld = mouseYNew
@@ -136,13 +128,5 @@ class View3D: View() {
         Robot().mouseMove(x, y)
         mouseXOld = x.toDouble()
         mouseYOld = y.toDouble()
-    }
-
-    fun moveCamera(dx: Double = 0.0, dy: Double = 0.0, dz: Double = 0.0) {
-        val point = rotateZ.transform(rotateY.transform(rotateX.transform(dx, dy, dz)))
-        println("moveCamera: {$dx, $dy, $dz} -> {${point.x}, ${point.y}, ${point.z}}")
-        camera.translateX += point.x
-        camera.translateY += point.y
-        camera.translateZ += point.z
     }
 }
